@@ -75,3 +75,46 @@ a {
 a:hover {
   text-decoration-color: rgba(18, 18, 18, 0.45);
 }
+
+
+/* Leaflet pulsing hop marker */
+.leaflet-pulse-icon {
+  background: transparent !important;
+  border: none !important;
+}
+
+.leaflet-pulse-icon .pulse-wrap {
+  position: relative;
+  width: 22px;
+  height: 22px;
+}
+
+.leaflet-pulse-icon .pulse-dot {
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: 10px;
+  height: 10px;
+  border-radius: 9999px;
+  background: #0f172a; /* dark dot */
+  box-shadow: 0 0 0 2px rgba(255,255,255,0.9);
+  z-index: 2;
+}
+
+.leaflet-pulse-icon .pulse-ring {
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: 22px;
+  height: 22px;
+  border-radius: 9999px;
+  border: 2px solid rgba(15, 23, 42, 0.7);
+  animation: pulse-ring 1.1s ease-out infinite;
+  z-index: 1;
+}
+
+@keyframes pulse-ring {
+  0%   { transform: scale(0.35); opacity: 0.95; }
+  70%  { transform: scale(1.25); opacity: 0.25; }
+  100% { transform: scale(1.45); opacity: 0; }
+}

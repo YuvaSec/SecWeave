@@ -1,4 +1,4 @@
-import TracerouteOnlineClient from "@/components/tools/TracerouteOnlineClient";
+import TracerouteOnlineClientOnly from "@/components/tools/TracerouteOnlineClientOnly";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
@@ -109,7 +109,7 @@ export default async function ToolPage({ params }: ToolPageProps) {
               // - map + polyline
               // - hops table */}
                     <CardContent>
-                        <TracerouteOnlineClient />
+                        <TracerouteOnlineClientOnly />
                     </CardContent>
                 </Card>
 
