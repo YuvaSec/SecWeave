@@ -73,6 +73,14 @@ const toolsRegistry: ToolDefinition[] = [
     ],
     relatedToolSlugs: ["mx-checker", "spf-checker"],
   },
+  {
+    slug: "traceroute-online", // // ✅ must match the URL: /tools/traceroute-online
+    title: "Traceroute Online",
+    description: "Trace the network route to a domain/IP and visualize hops on a map.",
+    category: "Network Security", // // ✅ new category (or use an existing one if your sidebar is hardcoded)
+    inputs: [], // // ✅ empty because TracerouteOnlineClient has its own input UI
+    relatedToolSlugs: ["mx-checker", "spf-checker", "jwt-decoder"], // // optional
+  },
 ];
 
 export const getAllTools = (): ToolDefinition[] => toolsRegistry;
