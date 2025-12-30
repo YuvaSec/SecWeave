@@ -2,22 +2,71 @@
 @tailwind components;
 @tailwind utilities;
 
+/* =========================
+   Design Tokens (Kuse-ish)
+   ========================= */
 :root {
-  color-scheme: light;
+  /* Surfaces */
+  --bg: 248 246 242; /* warm off-white */
+  --panel: 255 255 255;
+  --panel-2: 250 249 247;
+
+  /* Text */
+  --fg: 18 18 18; /* near-black */
+  --muted: 70 70 70;
+  --faint: 110 110 110;
+
+  /* Borders / rings */
+  --border: 230 226 218;
+  --ring: 18 18 18;
+
+  /* Accent */
+  --accent: 18 18 18; /* keep it minimal (mostly black CTAs) */
+  --accent-contrast: 255 255 255;
+
+  /* Radius */
+  --radius: 16px;
+}
+
+html,
+body {
+  height: 100%;
 }
 
 body {
-  @apply bg-fog text-ink antialiased;
+  background: rgb(var(--bg));
+  color: rgb(var(--fg));
+  font-family: var(--font-sans), ui-sans-serif, system-ui, -apple-system,
+    "Segoe UI", Roboto, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-a {
-  @apply text-ink hover:text-tide focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-tide;
+/* Use this class on headings that should feel “premium” */
+.serif {
+  font-family: var(--font-serif), ui-serif, Georgia, "Times New Roman", Times,
+    serif;
+  font-synthesis: weight; /* allows synthetic bold for fonts with only 400 weight */
+  text-rendering: optimizeLegibility;
 }
 
-button:focus-visible,
-input:focus-visible,
-select:focus-visible,
-textarea:focus-visible {
-  outline: 2px solid theme("colors.tide");
+/* Subtle text selection */
+::selection {
+  background: rgba(18, 18, 18, 0.12);
+}
+
+/* Better default focus */
+:focus-visible {
+  outline: 2px solid rgb(var(--ring));
   outline-offset: 2px;
+}
+
+/* Gentle link style */
+a {
+  text-decoration-color: rgba(18, 18, 18, 0.2);
+  text-underline-offset: 4px;
+}
+
+a:hover {
+  text-decoration-color: rgba(18, 18, 18, 0.45);
 }

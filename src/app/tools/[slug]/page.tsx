@@ -1,5 +1,21 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  FieldHint,
+  FieldLabel,
+  SelectField,
+  TextAreaField,
+  TextField,
+} from "@/components/ui/fields";
 import {
   getAllTools,
   getToolBySlug,
@@ -17,23 +33,14 @@ const renderInput = (tool: ToolDefinition) =>
     if (input.type === "textarea") {
       return (
         <div key={inputId} className="space-y-2">
-          <label
-            className="text-sm font-medium text-slate-700"
-            htmlFor={inputId}
-          >
-            {input.label}
-          </label>
-          <textarea
+          <FieldLabel>{input.label}</FieldLabel>
+          <TextAreaField
             id={inputId}
             name={input.name}
-            rows={4}
             placeholder={input.placeholder}
             required={input.required}
-            className="w-full rounded-lg border border-mist px-3 py-2 text-sm"
           />
-          {input.description && (
-            <p className="text-xs text-slate-500">{input.description}</p>
-          )}
+          {input.description && <FieldHint>{input.description}</FieldHint>}
         </div>
       );
     }
@@ -41,47 +48,30 @@ const renderInput = (tool: ToolDefinition) =>
     if (input.type === "select") {
       return (
         <div key={inputId} className="space-y-2">
-          <label
-            className="text-sm font-medium text-slate-700"
-            htmlFor={inputId}
-          >
-            {input.label}
-          </label>
-          <select
-            id={inputId}
-            name={input.name}
-            required={input.required}
-            className="w-full rounded-lg border border-mist px-3 py-2 text-sm"
-          >
+          <FieldLabel>{input.label}</FieldLabel>
+          <SelectField id={inputId} name={input.name} required={input.required}>
             {input.options?.map((option) => (
               <option key={option.value} value={option.value}>
                 {option.label}
               </option>
             ))}
-          </select>
-          {input.description && (
-            <p className="text-xs text-slate-500">{input.description}</p>
-          )}
+          </SelectField>
+          {input.description && <FieldHint>{input.description}</FieldHint>}
         </div>
       );
     }
 
     return (
       <div key={inputId} className="space-y-2">
-        <label className="text-sm font-medium text-slate-700" htmlFor={inputId}>
-          {input.label}
-        </label>
-        <input
+        <FieldLabel>{input.label}</FieldLabel>
+        <TextField
           id={inputId}
           name={input.name}
           type="text"
           placeholder={input.placeholder}
           required={input.required}
-          className="w-full rounded-lg border border-mist px-3 py-2 text-sm"
         />
-        {input.description && (
-          <p className="text-xs text-slate-500">{input.description}</p>
-        )}
+        {input.description && <FieldHint>{input.description}</FieldHint>}
       </div>
     );
   });
@@ -96,56 +86,62 @@ export default async function ToolPage({ params }: ToolPageProps) {
   }
 
   const relatedTools = tool.relatedToolSlugs
-    .map((slug) => getToolBySlug(slug))
-    .filter((relatedTool): relatedTool is ToolDefinition =>
-      Boolean(relatedTool),
-    );
+    .map((toolSlug) => getToolBySlug(toolSlug))
+    .filter((relatedTool): relatedTool is ToolDefinition => Boolean(relatedTool));
 
   return (
     <div className="space-y-8">
-      <section className="rounded-2xl border border-mist bg-white p-6 shadow-sm">
-        <p className="text-xs font-semibold uppercase tracking-[0.25em] text-slate-400">
-          {tool.category}
-        </p>
-        <h1 className="mt-3 text-2xl font-semibold">{tool.title}</h1>
-        <p className="mt-2 text-sm text-slate-600">{tool.description}</p>
-        <form className="mt-6 space-y-4">
-          {renderInput(tool)}
-          <button
-            type="button"
-            className="inline-flex items-center rounded-lg bg-ink px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800"
-          >
-            Run check
-          </button>
-        </form>
-      </section>
-
-      <section className="grid gap-6 lg:grid-cols-[2fr,1fr]">
-        <div className="rounded-2xl border border-mist bg-white p-6 shadow-sm">
-          <h2 className="text-lg font-semibold">Results</h2>
-          <div className="mt-4 rounded-xl border border-dashed border-mist bg-fog px-6 py-10 text-sm text-slate-500">
-            Results will appear here once the tool is connected.
+      <Card>
+        <CardHeader className="space-y-3">
+          <Badge>{tool.category}</Badge>
+          <div>
+            <CardTitle className="serif text-2xl">{tool.title}</CardTitle>
+            <CardDescription>{tool.description}</CardDescription>
           </div>
-        </div>
+        </CardHeader>
+        <CardContent>
+          <form className="space-y-4">
+            {renderInput(tool)}
+            <Button type="button">Run check</Button>
+          </form>
+        </CardContent>
+      </Card>
 
-        <div className="rounded-2xl border border-mist bg-white p-6 shadow-sm">
-          <h2 className="text-lg font-semibold">Related tools</h2>
-          <div className="mt-4 space-y-3">
+      <div className="grid gap-6 lg:grid-cols-[2fr,1fr]">
+        <Card>
+          <CardHeader>
+            <CardTitle>Results</CardTitle>
+            <CardDescription>
+              Results will appear here once the tool is connected.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="rounded-xl border border-dashed border-border bg-panel2 px-6 py-10 text-sm text-muted">
+              No data yet.
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Related tools</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
             {relatedTools.map((related) => (
               <Link
                 key={related.slug}
                 href={`/tools/${related.slug}`}
-                className="block rounded-lg border border-mist px-4 py-3 text-sm hover:border-tide"
+                className="block rounded-xl border border-border px-4 py-3 text-sm text-muted transition hover:bg-panel2 hover:text-fg"
               >
-                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
+                <p className="text-xs uppercase tracking-[0.3em] text-faint">
                   {related.category}
                 </p>
-                <p className="mt-1 font-semibold">{related.title}</p>
+                <p className="mt-1 font-medium text-fg">{related.title}</p>
               </Link>
             ))}
-          </div>
-        </div>
-      </section>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

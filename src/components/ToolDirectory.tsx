@@ -2,6 +2,15 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
+import { Badge } from "@/components/ui/badge";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { FieldLabel, TextField } from "@/components/ui/fields";
 import type { ToolDefinition } from "@/lib/toolsRegistry";
 
 type ToolDirectoryProps = {
@@ -25,50 +34,56 @@ export default function ToolDirectory({ tools }: ToolDirectoryProps) {
   }, [query, tools]);
 
   return (
-    <section className="space-y-6">
-      <div className="rounded-xl border border-mist bg-white p-6 shadow-sm">
-        <h1 className="text-2xl font-semibold">Explore security tools</h1>
-        <p className="mt-2 text-sm text-slate-600">
-          Search across checks and utilities built for quick network analysis.
-        </p>
-        <label
-          className="mt-4 block text-sm font-medium text-slate-700"
-          htmlFor="tool-search"
-        >
-          Search tools
-        </label>
-        <input
-          id="tool-search"
-          type="search"
-          placeholder="Search by name or description"
-          className="mt-2 w-full rounded-lg border border-mist px-4 py-3 text-sm text-slate-800"
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-        />
-      </div>
+    <section className="space-y-8">
+      <Card>
+        <CardHeader>
+          <p className="text-xs uppercase tracking-[0.4em] text-faint">
+            Directory
+          </p>
+          <h2 className="text-lg font-semibold tracking-tight text-fg md:text-xl">
+            Explore security tools
+          </h2>
+          <CardDescription>
+            Search across checks and utilities built for fast network analysis.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          <FieldLabel>Search tools</FieldLabel>
+          <TextField
+            type="search"
+            placeholder="Search by name or description"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+          />
+        </CardContent>
+      </Card>
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         {filteredTools.map((tool) => (
-          <Link
-            key={tool.slug}
-            href={`/tools/${tool.slug}`}
-            className="group rounded-xl border border-mist bg-white p-5 shadow-sm transition hover:-translate-y-1 hover:border-tide"
-          >
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
-              {tool.category}
-            </p>
-            <h2 className="mt-2 text-lg font-semibold group-hover:text-tide">
-              {tool.title}
-            </h2>
-            <p className="mt-2 text-sm text-slate-600">{tool.description}</p>
+          <Link key={tool.slug} href={`/tools/${tool.slug}`} className="group">
+            <Card className="h-full transition hover:-translate-y-1 hover:shadow-soft">
+              <CardContent className="space-y-3">
+                <Badge>{tool.category}</Badge>
+                <div>
+                  <h2 className="text-base font-semibold text-fg group-hover:text-fg">
+                    {tool.title}
+                  </h2>
+                  <p className="mt-1 text-sm text-muted">{tool.description}</p>
+                </div>
+              </CardContent>
+            </Card>
           </Link>
         ))}
       </div>
 
       {filteredTools.length === 0 && (
-        <div className="rounded-lg border border-dashed border-mist bg-white px-6 py-12 text-center text-sm text-slate-500">
-          No tools match that search. Try a different term.
-        </div>
+        <Card>
+          <CardContent>
+            <p className="text-sm text-muted">
+              No tools match that search. Try a different term.
+            </p>
+          </CardContent>
+        </Card>
       )}
     </section>
   );

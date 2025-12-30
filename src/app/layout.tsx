@@ -1,21 +1,30 @@
 import "./globals.css";
-import type { Metadata } from "next";
-import type { ReactNode } from "react";
-import AppShell from "@/components/AppShell";
-import { getToolsByCategory } from "@/lib/toolsRegistry";
+import type React from "react";
+import { Poppins, Instrument_Serif } from "next/font/google";
+import { AppShell } from "@/components/shell/app-shell";
 
-export const metadata: Metadata = {
-  title: "SecWeave Tools",
-  description: "Config-driven directory of security utilities.",
-};
+const poppins = Poppins({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+  variable: "--font-sans",
+});
 
-export default function RootLayout({ children }: { children: ReactNode }) {
-  const categories = getToolsByCategory();
+const instrumentSerif = Instrument_Serif({
+  subsets: ["latin"],
+  weight: ["400"],
+  style: ["normal", "italic"],
+  variable: "--font-serif",
+});
 
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
-    <html lang="en">
+    <html lang="en" className={`${poppins.variable} ${instrumentSerif.variable}`}>
       <body>
-        <AppShell categories={categories}>{children}</AppShell>
+        <AppShell>{children}</AppShell>
       </body>
     </html>
   );
