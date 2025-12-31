@@ -121,10 +121,9 @@ export class CesiumRenderer implements MapRenderer {
       requestRenderMode: true,
       maximumRenderTimeChange: Infinity,
       imageryProvider: osmProvider,
-      sceneMode: Cesium.SceneMode.SCENE2D,
+      sceneMode: Cesium.SceneMode.SCENE3D,
     });
 
-    viewer.scene.morphTo2D(0);
     viewer.scene.fog.enabled = false;
     if (viewer.scene.skyAtmosphere) viewer.scene.skyAtmosphere.show = false;
     if (viewer.scene.skyBox) viewer.scene.skyBox.show = false;
@@ -134,8 +133,8 @@ export class CesiumRenderer implements MapRenderer {
     if (viewer.scene.postProcessStages?.fxaa) {
       viewer.scene.postProcessStages.fxaa.enabled = false;
     }
-    viewer.scene.screenSpaceCameraController.enableRotate = false;
-    viewer.scene.screenSpaceCameraController.enableTilt = false;
+    viewer.scene.screenSpaceCameraController.enableRotate = true;
+    viewer.scene.screenSpaceCameraController.enableTilt = true;
 
     this.viewer = viewer;
     this.dataSource = new Cesium.CustomDataSource("traceroute");
@@ -388,10 +387,10 @@ export class CesiumRenderer implements MapRenderer {
     this.requestRender();
   }
 
-  focusHop(index: number) {
+  focusHop(index: number, force = false) {
     if (!this.viewer) return;
     if (!this.points[index]) return;
-    if (!this.options.flyToHop) return;
+    if (!this.options.flyToHop && !force) return;
 
     const point = this.points[index];
     const destinationHeight = zoomToHeight(this.options.followZoom);

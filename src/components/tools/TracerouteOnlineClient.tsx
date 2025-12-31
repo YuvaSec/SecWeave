@@ -2,11 +2,13 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import TracerouteMap from "@/components/traceroute/TracerouteMap";
+import HopTable from "@/components/traceroute/HopTable";
 import type { TraceroutePoint } from "@/lib/map/renderers/MapRenderer";
 
 type Hop = {
   hop: number;
   ip: string | null;
+  host?: string | null;
   rtt: [string, string, string];
   rttMs?: number | null;
   status?: "ok" | "unknown";
@@ -39,6 +41,8 @@ export default function TracerouteOnlineClient() {
   const [stopMessage, setStopMessage] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const jobIdRef = useRef<string | null>(null);
+  const [activeHopIndex, setActiveHopIndex] = useState<number | null>(null);
+  const [activePointIndex, setActivePointIndex] = useState<number | null>(null);
 
   // // Animation controls
   const [isPlaying, setIsPlaying] = useState(true);
@@ -70,6 +74,19 @@ export default function TracerouteOnlineClient() {
           rtt: h.rtt,
         }));
   }, [data]);
+
+  useEffect(() => {
+    if (!data?.hops?.length) {
+      setActiveHopIndex(null);
+      setActivePointIndex(null);
+      return;
+    }
+    if (activeHopIndex === null) return;
+    const hop = data.hops[activeHopIndex];
+    if (!hop) return;
+    const pointIndex = points.findIndex((p) => p.hop === hop.hop);
+    setActivePointIndex(pointIndex >= 0 ? pointIndex : null);
+  }, [activeHopIndex, data, points]);
 
   // // When new results arrive, start reveal from hop 1
   useEffect(() => {
@@ -110,6 +127,8 @@ export default function TracerouteOnlineClient() {
     setData(null);
     setStopReason(null);
     setStopMessage(null);
+    setActiveHopIndex(null);
+    setActivePointIndex(null);
 
     try {
       const jobId = createJobId();
@@ -346,29 +365,38 @@ export default function TracerouteOnlineClient() {
                     followZoom={followZoom}
                     flyToHop={flyToHop}
                     revealDelayMs={revealDelayMs}
+                    activeHopIndex={activePointIndex}
                   />
                 </div>
               </div>
 
               {/* Legend */}
               {points.length ? (
-                  <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-zinc-600">
-              <span className="inline-flex items-center gap-2">
-                <span className="h-2 w-6 rounded" style={{ background: "#22c55e" }} /> fast
-              </span>
-                    <span className="inline-flex items-center gap-2">
-                <span className="h-2 w-6 rounded" style={{ background: "#84cc16" }} /> ok
-              </span>
-                    <span className="inline-flex items-center gap-2">
-                <span className="h-2 w-6 rounded" style={{ background: "#f59e0b" }} /> slow
-              </span>
-                    <span className="inline-flex items-center gap-2">
-                <span className="h-2 w-6 rounded" style={{ background: "#ef4444" }} /> very slow
-              </span>
-                    <span className="inline-flex items-center gap-2">
-                <span className="h-2 w-6 rounded" style={{ background: "#94a3b8" }} /> unknown
-              </span>
-                  </div>
+                <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-zinc-600">
+                  <span className="inline-flex items-center gap-2">
+                    <span className="h-2 w-6 rounded" style={{ background: "#22c55e" }} /> fast
+                  </span>
+                  <span className="inline-flex items-center gap-2">
+                    <span className="h-2 w-6 rounded" style={{ background: "#84cc16" }} /> ok
+                  </span>
+                  <span className="inline-flex items-center gap-2">
+                    <span className="h-2 w-6 rounded" style={{ background: "#f59e0b" }} /> slow
+                  </span>
+                  <span className="inline-flex items-center gap-2">
+                    <span className="h-2 w-6 rounded" style={{ background: "#ef4444" }} /> very slow
+                  </span>
+                  <span className="inline-flex items-center gap-2">
+                    <span className="h-2 w-6 rounded" style={{ background: "#94a3b8" }} /> unknown
+                  </span>
+                </div>
+              ) : null}
+
+              {data?.hops?.length ? (
+                <HopTable
+                  hops={data.hops}
+                  activeHopIndex={activeHopIndex}
+                  onSelectHop={setActiveHopIndex}
+                />
               ) : null}
             </div>
         ) : null}

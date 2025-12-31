@@ -24,6 +24,8 @@ export type ToolDefinition = {
   relatedToolSlugs: string[];
 };
 
+const MAX_RELATED_TOOLS = 8;
+
 const toolsRegistry: ToolDefinition[] = [
   {
     slug: "mx-checker",
@@ -96,4 +98,21 @@ export const getToolsByCategory = (): Record<string, ToolDefinition[]> => {
     acc[tool.category].push(tool);
     return acc;
   }, {});
+};
+
+export const getRelatedToolsByCategory = (
+  currentSlug: string,
+  max = MAX_RELATED_TOOLS
+): ToolDefinition[] => {
+  const currentTool = getToolBySlug(currentSlug);
+  if (!currentTool) return [];
+
+  return toolsRegistry
+    .filter(
+      (tool) =>
+        tool.category === currentTool.category && tool.slug !== currentSlug
+    )
+    .slice()
+    .sort((a, b) => a.title.localeCompare(b.title))
+    .slice(0, max);
 };

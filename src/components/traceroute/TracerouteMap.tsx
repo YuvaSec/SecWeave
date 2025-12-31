@@ -9,6 +9,7 @@ type TracerouteMapProps = {
   followZoom: number;
   flyToHop: boolean;
   revealDelayMs: number;
+  activeHopIndex?: number | null;
 };
 
 export default function TracerouteMap({
@@ -17,6 +18,7 @@ export default function TracerouteMap({
   followZoom,
   flyToHop,
   revealDelayMs,
+  activeHopIndex = null,
 }: TracerouteMapProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const rendererRef = useRef<MapRenderer | null>(null);
@@ -71,6 +73,12 @@ export default function TracerouteMap({
     if (visibleCount < 1) return;
     rendererRef.current.focusHop(visibleCount - 1);
   }, [isReady, flyToHop, visibleCount, options]);
+
+  useEffect(() => {
+    if (!isReady || !rendererRef.current) return;
+    if (activeHopIndex === null || activeHopIndex < 0) return;
+    rendererRef.current.focusHop(activeHopIndex, true);
+  }, [isReady, activeHopIndex]);
 
   return (
     <div className="relative h-full w-full">

@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/fields";
 import {
     getAllTools,
+    getRelatedToolsByCategory,
     getToolBySlug,
     type ToolDefinition,
 } from "@/lib/toolsRegistry";
@@ -85,10 +86,8 @@ export default async function ToolPage({ params }: ToolPageProps) {
     const tool = getToolBySlug(slug);
     if (!tool) notFound();
 
-    // // ✅ Build "Related tools" list (used in both layouts)
-    const relatedTools = tool.relatedToolSlugs
-        .map((toolSlug) => getToolBySlug(toolSlug))
-        .filter((relatedTool): relatedTool is ToolDefinition => Boolean(relatedTool));
+    // // ✅ Build "Related tools" list (same category, excludes current tool)
+    const relatedTools = getRelatedToolsByCategory(tool.slug);
 
     // // ✅ SPECIAL CASE: traceroute-online uses a custom UI (map + hops table)
     if (tool.slug === "traceroute-online") {
@@ -98,7 +97,9 @@ export default async function ToolPage({ params }: ToolPageProps) {
                     <CardHeader className="space-y-3">
                         <Badge>{tool.category}</Badge>
                         <div>
-                            <CardTitle className="serif text-2xl">{tool.title}</CardTitle>
+                            <CardTitle className="poppins text-3xl md:text-3xl tracking-tight">
+                                {tool.title}
+                            </CardTitle>
                             <CardDescription>{tool.description}</CardDescription>
                         </div>
                     </CardHeader>
@@ -118,18 +119,24 @@ export default async function ToolPage({ params }: ToolPageProps) {
                         <CardTitle>Related tools</CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-3">
-                        {relatedTools.map((related) => (
-                            <Link
-                                key={related.slug}
-                                href={`/tools/${related.slug}`}
-                                className="block rounded-xl border border-border px-4 py-3 text-sm text-muted transition hover:bg-panel2 hover:text-fg"
-                            >
-                                <p className="text-xs uppercase tracking-[0.3em] text-faint">
-                                    {related.category}
-                                </p>
-                                <p className="mt-1 font-medium text-fg">{related.title}</p>
-                            </Link>
-                        ))}
+                        {relatedTools.length ? (
+                            relatedTools.map((related) => (
+                                <Link
+                                    key={related.slug}
+                                    href={`/tools/${related.slug}`}
+                                    className="block rounded-xl border border-border px-4 py-3 text-sm text-muted transition hover:bg-panel2 hover:text-fg"
+                                >
+                                    <p className="text-xs uppercase tracking-[0.3em] text-faint">
+                                        {related.category}
+                                    </p>
+                                    <p className="mt-1 font-medium text-fg">{related.title}</p>
+                                </Link>
+                            ))
+                        ) : (
+                            <div className="rounded-xl border border-dashed border-border bg-panel2 px-4 py-4 text-sm text-muted">
+                                No related tools in this category yet.
+                            </div>
+                        )}
                     </CardContent>
                 </Card>
             </div>
@@ -143,7 +150,9 @@ export default async function ToolPage({ params }: ToolPageProps) {
                 <CardHeader className="space-y-3">
                     <Badge>{tool.category}</Badge>
                     <div>
-                        <CardTitle className="serif text-2xl">{tool.title}</CardTitle>
+                        <CardTitle className="poppins text-3xl md:text-3xl tracking-tight">
+                            {tool.title}
+                        </CardTitle>
                         <CardDescription>{tool.description}</CardDescription>
                     </div>
                 </CardHeader>
@@ -175,18 +184,24 @@ export default async function ToolPage({ params }: ToolPageProps) {
                         <CardTitle>Related tools</CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-3">
-                        {relatedTools.map((related) => (
-                            <Link
-                                key={related.slug}
-                                href={`/tools/${related.slug}`}
-                                className="block rounded-xl border border-border px-4 py-3 text-sm text-muted transition hover:bg-panel2 hover:text-fg"
-                            >
-                                <p className="text-xs uppercase tracking-[0.3em] text-faint">
-                                    {related.category}
-                                </p>
-                                <p className="mt-1 font-medium text-fg">{related.title}</p>
-                            </Link>
-                        ))}
+                        {relatedTools.length ? (
+                            relatedTools.map((related) => (
+                                <Link
+                                    key={related.slug}
+                                    href={`/tools/${related.slug}`}
+                                    className="block rounded-xl border border-border px-4 py-3 text-sm text-muted transition hover:bg-panel2 hover:text-fg"
+                                >
+                                    <p className="text-xs uppercase tracking-[0.3em] text-faint">
+                                        {related.category}
+                                    </p>
+                                    <p className="mt-1 font-medium text-fg">{related.title}</p>
+                                </Link>
+                            ))
+                        ) : (
+                            <div className="rounded-xl border border-dashed border-border bg-panel2 px-4 py-4 text-sm text-muted">
+                                No related tools in this category yet.
+                            </div>
+                        )}
                     </CardContent>
                 </Card>
             </div>

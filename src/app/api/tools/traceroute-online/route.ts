@@ -168,14 +168,28 @@ export async function POST(req: Request) {
         let targetIp = body.target;
 
         if (!isIp(targetIp)) {
-            const resolved = await dns.lookup(body.target, { all: true });
+            try {
+                const resolved = await dns.lookup(body.target, { all: true });
 
-            if (!resolved?.length) {
-                return NextResponse.json({ error: "Could not resolve domain." }, { status: 400 });
+                if (!resolved?.length) {
+                    return NextResponse.json({ error: "Could not resolve that host." }, { status: 400 });
+                }
+
+                // // Prefer IPv4 first (like most online tools)
+                targetIp = resolved.find((r) => r.family === 4)?.address ?? resolved[0].address;
+            } catch (err: any) {
+                const code = err?.code;
+                if (code === "ENOTFOUND" || code === "EAI_AGAIN") {
+                    return NextResponse.json(
+                        { error: "We couldn't find that domain. Check the spelling and try again." },
+                        { status: 400 }
+                    );
+                }
+                return NextResponse.json(
+                    { error: "Unable to resolve that host right now. Please try again." },
+                    { status: 400 }
+                );
             }
-
-            // // Prefer IPv4 first (like most online tools)
-            targetIp = resolved.find((r) => r.family === 4)?.address ?? resolved[0].address;
         }
 
         // // Block private targets (SSRF-ish)

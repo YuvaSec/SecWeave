@@ -19,7 +19,7 @@ export interface MapRenderer {
   init(containerEl: HTMLDivElement): void;
   setData(points: TraceroutePoint[], options: TracerouteMapOptions): void;
   revealHop(visibleCount: number): void;
-  focusHop(index: number): void;
+  focusHop(index: number, force?: boolean): void;
   fitToData(): void;
   destroy(): void;
   zoomIn?(): void;
