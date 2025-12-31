@@ -2,7 +2,7 @@ import "./globals.css";
 import type React from "react";
 import { Poppins, Instrument_Serif } from "next/font/google";
 import { AppShell } from "@/components/shell/app-shell";
-import "leaflet/dist/leaflet.css";
+import "cesium/Build/Cesium/Widgets/widgets.css";
 
 const poppins = Poppins({
   subsets: ["latin"],

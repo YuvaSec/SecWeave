@@ -1,6 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // remove any eslint: { dirs: ... } block
+  turbopack: {},
 };
 
 module.exports = nextConfig;

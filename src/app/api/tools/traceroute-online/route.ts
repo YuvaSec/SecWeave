@@ -1,32 +1,29 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { execFile } from "node:child_process";
-import { promisify } from "node:util";
+import { spawn } from "node:child_process";
 import dns from "node:dns/promises";
 import net from "node:net";
 import ipaddr from "ipaddr.js";
+import readline from "node:readline";
+import { randomUUID } from "node:crypto";
+import {
+    createJob,
+    finalizeJob,
+    type HopRecord,
+    type JobResult,
+    type StopReason,
+} from "./store";
 
 export const runtime = "nodejs"; // // ✅ needs Node + traceroute binary
 
-const execFileAsync = promisify(execFile);
-
 const BodySchema = z.object({
     target: z.string().trim().min(1).max(253),
+    jobId: z.string().trim().optional(),
 });
 
-type Hop = {
-    hop: number;
-    ip: string | null; // // "IP ADDRESS / HOST"
-    rtt: [string, string, string]; // // "RTT 1/2/3"
-    geo: null | {
-        lat: number;
-        lon: number;
-        city?: string;
-        country?: string;
-        isp?: string;
-        asn?: string;
-    };
-};
+const DEFAULT_MAX_HOPS = 10;
+const DEFAULT_TIMEOUT_MS = 25_000;
+const DEFAULT_NO_REPLY_STREAK = 3;
 
 function isIp(value: string) {
     return net.isIP(value) !== 0;
@@ -42,62 +39,74 @@ function isPublicIp(ip: string) {
     }
 }
 
-function parseTraceroute(stdout: string): Hop[] {
-    const lines = stdout
-        .split("\n")
-        .map((l) => l.trim())
-        .filter(Boolean);
+function parseMs(value: string): number | null {
+    const m = value.match(/(\d+(\.\d+)?)\s*ms/i);
+    if (!m) return null;
+    return Number(m[1]);
+}
 
-    const hops: Hop[] = [];
+function hopRttMs(rtt: [string, string, string]): number | null {
+    const candidates = rtt
+        .map(parseMs)
+        .filter((n): n is number => typeof n === "number" && !Number.isNaN(n));
 
-    for (const line of lines) {
-        // // Skip header like: "traceroute to ..."
-        if (line.toLowerCase().startsWith("traceroute")) continue;
+    if (!candidates.length) return null;
+    return Math.min(...candidates);
+}
 
-        const m = line.match(/^(\d+)\s+(.*)$/);
-        if (!m) continue;
+function parseTracerouteLine(line: string): HopRecord | null {
+    // // Skip header like: "traceroute to ..."
+    if (line.toLowerCase().startsWith("traceroute")) return null;
 
-        const hopNum = Number(m[1]);
-        const rest = m[2];
-        const tokens = rest.split(/\s+/);
+    const m = line.match(/^(\d+)\s+(.*)$/);
+    if (!m) return null;
 
-        const firstIpIdx = tokens.findIndex((t) => isIp(t.replace(/[()]/g, "")));
-        const ip = firstIpIdx >= 0 ? tokens[firstIpIdx].replace(/[()]/g, "") : null;
+    const hopNum = Number(m[1]);
+    const rest = m[2];
+    const tokens = rest.split(/\s+/);
 
-        const rttCells: string[] = [];
-        for (let i = Math.max(firstIpIdx + 1, 0); i < tokens.length && rttCells.length < 3; i++) {
-            const t = tokens[i];
+    const firstIpIdx = tokens.findIndex((t) => isIp(t.replace(/[()]/g, "")));
+    const ip = firstIpIdx >= 0 ? tokens[firstIpIdx].replace(/[()]/g, "") : null;
 
-            if (t === "*") {
-                rttCells.push("*");
-                continue;
-            }
+    const rttCells: string[] = [];
+    for (let i = Math.max(firstIpIdx + 1, 0); i < tokens.length && rttCells.length < 3; i++) {
+        const t = tokens[i];
 
-            const cleaned = t.replace(/[()]/g, "");
-            if (isIp(cleaned)) {
-                rttCells.push(cleaned); // // sometimes shows IP in RTT columns (load balancing)
-                continue;
-            }
-
-            const next = tokens[i + 1];
-            if (/^\d+(\.\d+)?$/.test(t) && next && next.startsWith("ms")) {
-                rttCells.push(`${t} ms`);
-                i += 1; // // skip "ms"
-                continue;
-            }
+        if (t === "*") {
+            rttCells.push("*");
+            continue;
         }
 
-        while (rttCells.length < 3) rttCells.push("");
+        const cleaned = t.replace(/[()]/g, "");
+        if (isIp(cleaned)) {
+            rttCells.push(cleaned);
+            continue;
+        }
 
-        hops.push({
-            hop: hopNum,
-            ip,
-            rtt: [rttCells[0], rttCells[1], rttCells[2]] as [string, string, string],
-            geo: null,
-        });
+        const next = tokens[i + 1];
+        if (/^\d+(\.\d+)?$/.test(t) && next && next.startsWith("ms")) {
+            rttCells.push(`${t} ms`);
+            i += 1; // // skip "ms"
+            continue;
+        }
     }
 
-    return hops;
+    while (rttCells.length < 3) rttCells.push("");
+
+    const rtt = [rttCells[0], rttCells[1], rttCells[2]] as [string, string, string];
+    const rttMs = hopRttMs(rtt);
+    const isNoReply = !ip && rest.includes("*");
+
+    return {
+        hop: hopNum,
+        ip,
+        rtt,
+        rttMs,
+        geo: null,
+        rawLine: line,
+        status: ip ? "ok" : "unknown",
+        isNoReply,
+    };
 }
 
 async function geoLookup(ip: string) {
@@ -177,6 +186,9 @@ export async function POST(req: Request) {
             );
         }
 
+        const jobId = body.jobId ?? randomUUID();
+        const job = createJob(jobId, body.target, targetIp);
+
         const ipFamily = net.isIP(targetIp); // // 4 or 6
         const isDarwin = process.platform === "darwin";
 
@@ -186,35 +198,97 @@ export async function POST(req: Request) {
 
         const args: string[] = [];
         args.push("-n"); // // no DNS (faster, shows IPs)
-        args.push("-q", "3"); // // 3 probes => RTT 1/2/3
+        args.push("-q", "1"); // // 1 probe to avoid long star streaks
         args.push("-w", "1"); // // 1s wait per probe
-        args.push("-m", "30"); // // max hops
+        args.push("-m", String(DEFAULT_MAX_HOPS)); // // max hops
         args.push(targetIp);
 
-        let stdout = "";
-        try {
-            const result = await execFileAsync(tracerouteBin, args, {
-                timeout: 60_000,
-                maxBuffer: 1024 * 1024,
-            });
-            stdout = result.stdout;
-        } catch (err: any) {
-            // // If traceroute6 isn't installed on mac, retry with traceroute
-            if (tracerouteBin === "traceroute6") {
-                const result = await execFileAsync("traceroute", args, {
-                    timeout: 60_000,
-                    maxBuffer: 1024 * 1024,
-                });
-                stdout = result.stdout;
-            } else {
-                throw err;
+        let stopReason: StopReason | null = null;
+        let errorMessage: string | undefined;
+        let noReplyStreak = 0;
+        let stopped = false;
+        let killTimer: NodeJS.Timeout | null = null;
+
+        const child = spawn(tracerouteBin, args, {
+            stdio: ["ignore", "pipe", "pipe"],
+        });
+        job.process = child;
+
+        const timeoutId = setTimeout(() => {
+            // // Stop on timeout to return partial results.
+            stop("TIMEOUT");
+        }, DEFAULT_TIMEOUT_MS);
+
+        req.signal.addEventListener("abort", () => {
+            // // Client cancelled: terminate traceroute immediately.
+            stop("USER_CANCELLED");
+        });
+
+        function stop(reason: StopReason, message?: string) {
+            if (stopped) return;
+            stopped = true;
+            stopReason = reason;
+            if (message) errorMessage = message;
+            if (!child.killed) {
+                child.kill("SIGTERM");
+                killTimer = setTimeout(() => {
+                    if (!child.killed) child.kill("SIGKILL");
+                }, 500);
             }
         }
+        job.cancel = stop;
 
-        const hops = parseTraceroute(stdout);
+        child.on("error", (err) => {
+            // // Capture spawn failures (missing traceroute binary, etc.).
+            stop("ERROR", err?.message ?? "Failed to start traceroute.");
+        });
 
-        // // Geo lookup for each hop (public hops only)
-        for (const hop of hops) {
+        const rl = readline.createInterface({
+            input: child.stdout,
+            crlfDelay: Infinity,
+        });
+
+        rl.on("line", (line) => {
+            const trimmed = line.trim();
+            if (!trimmed) return;
+            const hop = parseTracerouteLine(trimmed);
+            if (!hop) return;
+
+            job.hops.push(hop);
+
+            if (hop.isNoReply) {
+                noReplyStreak += 1;
+            } else {
+                noReplyStreak = 0;
+            }
+
+            if (noReplyStreak >= DEFAULT_NO_REPLY_STREAK) {
+                // // Stop when too many hops return only "*" (no reply).
+                stop("NO_REPLY_STREAK");
+            }
+        });
+
+        child.stderr.on("data", (chunk) => {
+            const msg = chunk.toString().trim();
+            if (msg) {
+                errorMessage = msg;
+            }
+        });
+
+        const exitCode: number = await new Promise((resolve) => {
+            child.on("close", (code) => resolve(code ?? 0));
+        });
+
+        rl.close();
+        clearTimeout(timeoutId);
+        if (killTimer) clearTimeout(killTimer);
+
+        if (!stopReason) {
+            stopReason = exitCode === 0 ? "COMPLETED" : "ERROR";
+        }
+
+        // // Geo lookup for each hop (public hops only).
+        for (const hop of job.hops) {
             if (!hop.ip) continue;
 
             if (!isPublicIp(hop.ip)) {
@@ -229,11 +303,17 @@ export async function POST(req: Request) {
             }
         }
 
-        return NextResponse.json({
+        const result: JobResult = {
             target: body.target,
             targetIp,
-            hops,
-        });
+            hops: job.hops,
+            stopReason,
+            errorMessage,
+            jobId,
+        };
+
+        finalizeJob(job, result);
+        return NextResponse.json(result);
     } catch (e: any) {
         return NextResponse.json(
             { error: e?.message ?? "Unknown error" },
